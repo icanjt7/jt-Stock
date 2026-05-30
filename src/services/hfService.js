@@ -1,13 +1,40 @@
-import { HfInference } from '@huggingface/inference'
+const HF_API = 'https://api-inference.huggingface.co/models'
 
-let hf = null
+// 레거시 inference API - 브라우저 CORS 지원, 완전 무료
+async function callTextModel(prompt, token) {
+  // Zephyr-7b: non-gated, 브라우저에서 안정적으로 동작
+  const res = await fetch(`${HF_API}/HuggingFaceH4/zephyr-7b-beta`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      inputs: prompt,
+      parameters: {
+        max_new_tokens: 600,
+        return_full_text: false,
+        temperature: 0.75,
+        do_sample: true,
+      },
+      options: { wait_for_model: true },
+    }),
+  })
 
-export function initHF(token) {
-  hf = new HfInference(token)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    if (body.error?.includes('loading')) throw new Error('모델 로딩 중... 30초 후 다시 시도해주세요')
+    throw new Error(body.error || `서버 오류 (${res.status})`)
+  }
+
+  const data = await res.json()
+  if (Array.isArray(data)) return data[0].generated_text
+  throw new Error('예상치 못한 응답 형식')
 }
 
-export function getHF() {
-  return hf
+// Zephyr chat template
+function zephyrPrompt(system, user) {
+  return `<|system|>\n${system}\n<|user|>\n${user}\n<|assistant|>\n`
 }
 
 const CATEGORIES = {
@@ -20,78 +47,55 @@ const CATEGORIES = {
 }
 
 export async function generateMaterials(category, token) {
-  const hfClient = new HfInference(token)
   const categoryDesc = CATEGORIES[category] || category
 
-  const prompt = `You are a creative AI video content planner. Generate exactly 5 unique and engaging short video ideas related to "${category}" (${categoryDesc}).
+  const system = 'You are a creative AI video content planner. You ALWAYS respond with valid JSON only.'
+  const user = `Generate exactly 5 unique short video ideas about "${category}" (${categoryDesc}).
+Each idea: visually compelling, 1-2 sentences, specific, good for social media.
+Return ONLY a JSON array of 5 strings, no markdown, no explanation:
+["idea 1", "idea 2", "idea 3", "idea 4", "idea 5"]`
 
-Each idea should be:
-- Visually compelling and suitable for AI image generation
-- 1-2 sentences max
-- Specific and vivid
-- Good for social media (Instagram, TikTok, YouTube Shorts)
-
-Return ONLY a JSON array of 5 strings. No explanation, no markdown, just the array.
-Example format: ["idea1", "idea2", "idea3", "idea4", "idea5"]`
-
-  const response = await hfClient.chatCompletion({
-    model: 'mistralai/Mistral-7B-Instruct-v0.3',
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 600,
-    temperature: 0.8,
-  })
-
-  const text = response.choices[0].message.content.trim()
-  const match = text.match(/\[[\s\S]*\]/)
-  if (!match) throw new Error('응답 파싱 실패')
+  const raw = await callTextModel(zephyrPrompt(system, user), token)
+  const match = raw.match(/\[[\s\S]*?\]/)
+  if (!match) throw new Error('응답 파싱 실패 — 다시 시도해주세요')
   return JSON.parse(match[0])
 }
 
 export async function generatePrompts(material, style, token) {
-  const hfClient = new HfInference(token)
-
-  const prompt = `You are an expert AI image prompt engineer. Create professional prompts for this video concept:
-
+  const system = 'You are an expert AI image prompt engineer. You ALWAYS respond with valid JSON only.'
+  const user = `Create prompts for this video concept:
 Topic: "${material}"
-Visual Style: ${style}
+Style: ${style}
 
-Generate TWO prompts:
-1. IMAGE_PROMPT: A detailed English prompt for FLUX.1 image generation (50-80 words). Include: subject, setting, lighting, mood, camera angle, quality descriptors.
-2. VIDEO_PROMPT: A detailed English prompt for AI video generation (40-60 words). Describe motion, camera movement, atmosphere.
+Return ONLY valid JSON (no markdown):
+{"image": "detailed English prompt for FLUX.1 image generation, 50-80 words, include subject/setting/lighting/mood/camera angle/quality", "video": "English prompt for AI video generation, 40-60 words, describe motion/camera movement/atmosphere"}`
 
-Return ONLY valid JSON in this exact format:
-{"image": "...", "video": "..."}`
-
-  const response = await hfClient.chatCompletion({
-    model: 'mistralai/Mistral-7B-Instruct-v0.3',
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 500,
-    temperature: 0.7,
-  })
-
-  const text = response.choices[0].message.content.trim()
-  const match = text.match(/\{[\s\S]*\}/)
-  if (!match) throw new Error('응답 파싱 실패')
+  const raw = await callTextModel(zephyrPrompt(system, user), token)
+  const match = raw.match(/\{[\s\S]*?\}/)
+  if (!match) throw new Error('프롬프트 파싱 실패 — 다시 시도해주세요')
   return JSON.parse(match[0])
 }
 
 export async function generateImage(imagePrompt, token) {
-  const hfClient = new HfInference(token)
-
-  const blob = await hfClient.textToImage({
-    model: 'black-forest-labs/FLUX.1-schnell',
-    inputs: imagePrompt,
-    parameters: {
-      num_inference_steps: 4,
-      width: 1024,
-      height: 576,
+  const res = await fetch(`${HF_API}/black-forest-labs/FLUX.1-schnell`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      inputs: imagePrompt,
+      parameters: { num_inference_steps: 4 },
+      options: { wait_for_model: true },
+    }),
   })
 
-  return URL.createObjectURL(blob)
-}
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    if (body.error?.includes('loading')) throw new Error('이미지 모델 로딩 중... 30초 후 다시 시도해주세요')
+    throw new Error(body.error || `이미지 생성 실패 (${res.status})`)
+  }
 
-export function getVideoSpaceUrl(videoPrompt) {
-  const encoded = encodeURIComponent(videoPrompt)
-  return `https://huggingface.co/spaces/Wan-AI/Wan2.1-I2V-14B-720P`
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
 }
