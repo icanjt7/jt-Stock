@@ -1,5 +1,5 @@
 const CHAT_URL = 'https://router.huggingface.co/featherless-ai/v1/chat/completions'
-const IMAGE_URL = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell'
+const IMAGE_URL = 'https://router.huggingface.co/fal-ai/models/black-forest-labs/FLUX.1-dev'
 const BACKEND_URL = 'https://icanjt-video-studio-api.hf.space'
 
 // K-연예인 스타일을 FLUX에서 잘 인식하는 핵심 키워드
@@ -134,7 +134,10 @@ export async function generateImage(imagePrompt, token) {
     },
     body: JSON.stringify({
       inputs: finalPrompt,
-      parameters: { num_inference_steps: 4 },
+      parameters: {
+        num_inference_steps: 28,
+        guidance_scale: 3.5,
+      },
     }),
   })
 
