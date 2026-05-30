@@ -24,7 +24,7 @@ jobs:
           git config --global user.name "GitHub Actions"
 
           # HF Space 저장소 클론
-          git clone https://icanjt7:${HF_TOKEN}@huggingface.co/spaces/icanjt7/video-studio-api hf_space
+          git clone https://icanjt:${HF_TOKEN}@huggingface.co/spaces/icanjt/video-studio-api hf_space
 
           # backend/ 파일을 Space 루트로 복사
           cp -r backend/* hf_space/

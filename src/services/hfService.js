@@ -1,6 +1,6 @@
 const CHAT_URL = 'https://router.huggingface.co/featherless-ai/v1/chat/completions'
 const IMAGE_URL = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell'
-const BACKEND_URL = 'https://icanjt7-video-studio-api.hf.space'
+const BACKEND_URL = 'https://icanjt-video-studio-api.hf.space'
 
 // K-연예인 스타일을 FLUX에서 잘 인식하는 핵심 키워드
 const K_BEAUTY_BASE = 'Korean actress, K-drama lead, glass skin, luminous flawless complexion, V-line jawline, doe eyes with aegyo-sal, straight natural brows, gradient lip, small face, idol-level beauty, gorgeous Korean celebrity'
