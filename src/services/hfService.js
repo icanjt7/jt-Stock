@@ -4,7 +4,7 @@ const HF_ROUTER = 'https://router.huggingface.co/hf-inference/models'
 
 async function callChat(messages, token) {
   const res = await fetch(
-    `${HF_ROUTER}/HuggingFaceH4/zephyr-7b-beta/v1/chat/completions`,
+    `${HF_ROUTER}/Qwen/Qwen2.5-7B-Instruct/v1/chat/completions`,
     {
       method: 'POST',
       headers: {
@@ -12,7 +12,7 @@ async function callChat(messages, token) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'HuggingFaceH4/zephyr-7b-beta',
+        model: 'Qwen/Qwen2.5-7B-Instruct',
         messages,
         max_tokens: 600,
         temperature: 0.75,
