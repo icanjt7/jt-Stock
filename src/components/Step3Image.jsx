@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { generateImage, generateImageWithRef } from '../services/hfService'
+import { generateImage, generateImageWithRef, BACKEND_URL } from '../services/hfService'
+
+const DEFAULT_REF = 'https://kr.pinterest.com/pin/442689838395866469/'
+
+function proxyUrl(url) {
+  if (!url) return ''
+  return `${BACKEND_URL}/api/proxy-image?url=${encodeURIComponent(url)}`
+}
 
 export default function Step3Image({ token, prompts, material, onBack, onNext }) {
   const [imageUrl, setImageUrl] = useState('')
@@ -8,13 +15,9 @@ export default function Step3Image({ token, prompts, material, onBack, onNext })
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [imagePrompt, setImagePrompt] = useState(prompts.image)
-  const [refUrl, setRefUrl] = useState('')
-  const [refPreview, setRefPreview] = useState('')
+  const [refUrl, setRefUrl] = useState(DEFAULT_REF)
 
-  const handleRefUrl = (url) => {
-    setRefUrl(url)
-    setRefPreview(url.trim())
-  }
+  const handleRefUrl = (url) => setRefUrl(url)
 
   const generate = async () => {
     setLoading(true)
@@ -57,7 +60,7 @@ export default function Step3Image({ token, prompts, material, onBack, onNext })
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <input
             type="url"
-            placeholder="https://... (구글 이미지에서 복사한 URL)"
+            placeholder="https://... (Pinterest, 구글 이미지 URL 모두 가능)"
             value={refUrl}
             onChange={(e) => handleRefUrl(e.target.value)}
           />
@@ -66,34 +69,30 @@ export default function Step3Image({ token, prompts, material, onBack, onNext })
             style={{ flexShrink: 0, fontSize: '0.82rem', padding: '0.5rem 0.9rem' }}
             onClick={() => window.open('https://www.google.com/search?q=Korean+actress+beauty+face+reference&tbm=isch', '_blank')}
           >
-            🔍 구글 검색
+            🔍 검색
           </button>
-          {refUrl && (
+          {refUrl !== DEFAULT_REF && (
             <button className="btn-secondary" style={{ flexShrink: 0, fontSize: '0.82rem' }}
-              onClick={() => { setRefUrl(''); setRefPreview('') }}>✕</button>
+              title="기본값으로 초기화"
+              onClick={() => setRefUrl(DEFAULT_REF)}>↺</button>
           )}
         </div>
 
-        {refPreview && (
+        {refUrl && (
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
             <img
-              src={refPreview}
+              src={proxyUrl(refUrl)}
               alt="reference"
               style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8,
-                border: '2px solid var(--accent)', flexShrink: 0 }}
-              onError={() => setRefPreview('')}
+                border: '2px solid var(--accent)', flexShrink: 0, background: 'var(--surface2)' }}
+              onError={(e) => { e.target.style.display = 'none' }}
             />
-            <div style={{ fontSize: '0.82rem', color: 'var(--text2)', lineHeight: 1.6 }}>
-              이 이미지의 <strong style={{ color: 'var(--accent2)' }}>한국 연예인 스타일</strong>을 참고해 생성합니다.<br />
-              (FLUX Redux 모델 사용 — 레퍼런스 없을 때보다 생성이 느릴 수 있습니다)
+            <div style={{ fontSize: '0.82rem', color: 'var(--text2)', lineHeight: 1.7 }}>
+              이 이미지 스타일을 참고해 생성합니다. (FLUX Redux)<br />
+              <span style={{ color: 'var(--text2)', fontSize: '0.75rem' }}>
+                Pinterest·구글 이미지·직접 URL 모두 지원 — 변경 시 ↺로 기본값 복원
+              </span>
             </div>
-          </div>
-        )}
-
-        {!refUrl && (
-          <div style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '0.75rem', lineHeight: 1.7 }}>
-            💡 <strong style={{ color: 'var(--text)' }}>URL 입력 방법:</strong> 구글 이미지 검색 →
-            원하는 한국 연예인 이미지 위 우클릭 → <em>이미지 주소 복사</em> → 위 칸에 붙여넣기
           </div>
         )}
       </div>

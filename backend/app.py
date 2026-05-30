@@ -80,20 +80,60 @@ def health():
     return {"status": "ok", "service": "Video Studio API"}
 
 
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+    "Referer": "https://www.google.com/",
+}
+
+
+def _extract_og_image(html: str) -> str | None:
+    import re
+    patterns = [
+        r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+        r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
+        r'<meta[^>]+name=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+        r'"image"\s*:\s*"(https://[^"]+\.(jpg|jpeg|png|webp)[^"]*)"',
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, html, re.IGNORECASE)
+        if m:
+            return m.group(1).replace("&amp;", "&").replace("&#39;", "'")
+    return None
+
+
 @app.get("/api/proxy-image")
 async def proxy_image(url: str):
-    """외부 이미지 URL을 서버 사이드에서 가져와 반환 (브라우저 CORS 우회)"""
+    """외부 이미지/웹페이지 URL → 이미지 반환 (CORS 우회 + og:image 자동 추출)"""
     try:
         async with httpx.AsyncClient(
-            timeout=30,
-            follow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+            timeout=30, follow_redirects=True, headers=_BROWSER_HEADERS
         ) as client:
             res = await client.get(url)
+
+        ct = res.headers.get("content-type", "").split(";")[0].strip().lower()
+
+        # HTML 페이지이면 og:image 추출 후 실제 이미지 재요청
+        if "html" in ct:
+            image_url = _extract_og_image(res.text)
+            if not image_url:
+                raise HTTPException(404, "페이지에서 이미지를 찾을 수 없습니다. 직접 이미지 URL을 사용해주세요.")
+            async with httpx.AsyncClient(
+                timeout=30, follow_redirects=True, headers=_BROWSER_HEADERS
+            ) as client:
+                res = await client.get(image_url)
+            ct = res.headers.get("content-type", "image/jpeg").split(";")[0].strip()
+
         if not res.is_success:
             raise HTTPException(res.status_code, f"이미지 요청 실패: HTTP {res.status_code}")
-        content_type = res.headers.get("content-type", "image/jpeg").split(";")[0]
-        return FastAPIResponse(content=res.content, media_type=content_type)
+
+        return FastAPIResponse(content=res.content, media_type=ct or "image/jpeg")
+
     except HTTPException:
         raise
     except Exception as e:
