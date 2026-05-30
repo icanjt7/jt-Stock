@@ -7,6 +7,7 @@ import time
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel
 
 app = FastAPI(title="Video Studio API")
@@ -77,6 +78,26 @@ class VideoRequest(BaseModel):
 @app.get("/")
 def health():
     return {"status": "ok", "service": "Video Studio API"}
+
+
+@app.get("/api/proxy-image")
+async def proxy_image(url: str):
+    """외부 이미지 URL을 서버 사이드에서 가져와 반환 (브라우저 CORS 우회)"""
+    try:
+        async with httpx.AsyncClient(
+            timeout=30,
+            follow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+        ) as client:
+            res = await client.get(url)
+        if not res.is_success:
+            raise HTTPException(res.status_code, f"이미지 요청 실패: HTTP {res.status_code}")
+        content_type = res.headers.get("content-type", "image/jpeg").split(";")[0]
+        return FastAPIResponse(content=res.content, media_type=content_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"이미지 프록시 오류: {e}")
 
 
 @app.post("/api/generate-video")

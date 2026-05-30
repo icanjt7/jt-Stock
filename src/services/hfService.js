@@ -157,14 +157,16 @@ export async function generateImage(imagePrompt, token) {
 export async function generateImageWithRef(imagePrompt, referenceUrl, token, onProgress) {
   const { Client } = await import('@gradio/client')
 
-  // 레퍼런스 이미지 fetch (CORS 우회 시도)
+  // 백엔드 프록시를 통해 CORS 없이 이미지 가져오기
   onProgress('레퍼런스 이미지 로딩 중...')
   let refBlob
   try {
-    const r = await fetch(referenceUrl)
+    const proxyUrl = `${BACKEND_URL}/api/proxy-image?url=${encodeURIComponent(referenceUrl)}`
+    const r = await fetch(proxyUrl)
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
     refBlob = await r.blob()
-  } catch {
-    throw new Error('레퍼런스 이미지를 불러올 수 없습니다.\n직접 접근이 막힌 URL입니다. 이미지를 다운로드 후 다른 방법을 사용해주세요.')
+  } catch (e) {
+    throw new Error(`레퍼런스 이미지 로딩 실패: ${e.message}\n다른 이미지 URL을 시도해보세요.`)
   }
   const refFile = new File([refBlob], 'reference.jpg', { type: refBlob.type || 'image/jpeg' })
 
