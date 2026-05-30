@@ -199,8 +199,11 @@
   color: var(--danger);
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   margin-top: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
 }
 
 /* Category chips */
