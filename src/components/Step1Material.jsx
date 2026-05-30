@@ -17,7 +17,7 @@ export default function Step1Material({ token, onSelect }) {
       const result = await generateMaterials(category, token)
       setMaterials(result)
     } catch (e) {
-      setError(`오류: ${e.message}. 토큰을 확인하거나 잠시 후 다시 시도해주세요.`)
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -41,12 +41,7 @@ export default function Step1Material({ token, onSelect }) {
         ))}
       </div>
 
-      <button
-        className="btn-primary"
-        onClick={generate}
-        disabled={loading}
-        style={{ minWidth: '140px' }}
-      >
+      <button className="btn-primary" onClick={generate} disabled={loading} style={{ minWidth: '140px' }}>
         {loading ? <><span className="spinner" />생성 중...</> : '✨ 소재 자동 생성'}
       </button>
 
@@ -57,10 +52,13 @@ export default function Step1Material({ token, onSelect }) {
           <div className="section-label">소재 선택 — 원하는 소재를 클릭하세요</div>
           <div className="material-grid">
             {materials.map((m, i) => (
-              <div key={i} className="material-card" onClick={() => onSelect(m)}>
+              <div key={i} className="material-card" onClick={() => onSelect(m.en)}>
                 <div className="material-num">{i + 1}</div>
-                <div className="material-text">{m}</div>
-                <div style={{ marginLeft: 'auto', color: 'var(--accent)', fontSize: '1.1rem' }}>›</div>
+                <div style={{ flex: 1 }}>
+                  <div className="material-text">{m.kr}</div>
+                  <div className="material-en">{m.en}</div>
+                </div>
+                <div style={{ marginLeft: '0.5rem', color: 'var(--accent)', fontSize: '1.1rem', flexShrink: 0 }}>›</div>
               </div>
             ))}
           </div>

@@ -60,23 +60,32 @@ const CATEGORIES = {
   '라이프스타일': 'lifestyle, daily life, home, wellness',
 }
 
+// 반환 형태: [{en: "...", kr: "..."}, ...]
 export async function generateMaterials(category, token) {
   const categoryDesc = CATEGORIES[category] || category
   const text = await callChat([
     {
       role: 'system',
-      content: 'You are a creative Korean AI video content planner. Output ONLY a raw JSON array. No markdown, no explanation.',
+      content: 'You are a creative Korean AI video content planner. Output ONLY a raw JSON array of objects. No markdown, no explanation.',
     },
     {
       role: 'user',
       content: `5 unique Korean-style short video ideas about "${category}" (${categoryDesc}).
 - Must feature beautiful Korean actress-level woman in authentic Korean settings
-- Visually compelling, 1-2 sentences each, great for Instagram/TikTok/YouTube Shorts
+- Each idea needs both English (for AI generation) and Korean (for display)
+- English: 1-2 sentences, visual, specific
+- Korean: 같은 내용을 자연스러운 한국어로 1-2문장
+
 Output format — exactly this, no other text:
-["Korean idea one", "Korean idea two", "Korean idea three", "Korean idea four", "Korean idea five"]`,
+[{"en":"English idea one","kr":"한국어 설명 1"},{"en":"English idea two","kr":"한국어 설명 2"},{"en":"English idea three","kr":"한국어 설명 3"},{"en":"English idea four","kr":"한국어 설명 4"},{"en":"English idea five","kr":"한국어 설명 5"}]`,
     },
-  ], token, 400)
-  return extractJSON(text, 'array')
+  ], token, 600)
+
+  const parsed = extractJSON(text, 'array')
+  // 구형 string 배열도 허용 (하위 호환)
+  return parsed.map(item =>
+    typeof item === 'string' ? { en: item, kr: item } : item
+  )
 }
 
 export async function generatePrompts(material, style, token) {
