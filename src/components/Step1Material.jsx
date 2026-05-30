@@ -8,6 +8,7 @@ export default function Step1Material({ token, onSelect }) {
   const [materials, setMaterials] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [customInput, setCustomInput] = useState('')
 
   const generate = async () => {
     setLoading(true)
@@ -23,11 +24,44 @@ export default function Step1Material({ token, onSelect }) {
     }
   }
 
+  const handleCustomSubmit = () => {
+    const text = customInput.trim()
+    if (text) onSelect(text)
+  }
+
   return (
     <div className="step-panel">
-      <h2>소재 자동 생성</h2>
-      <p className="step-desc">카테고리를 선택하고 AI가 추천하는 영상 소재 5개를 생성합니다</p>
+      <h2>소재 선택</h2>
+      <p className="step-desc">AI가 소재를 추천하거나, 직접 원하는 소재를 입력하세요</p>
 
+      {/* 직접 입력 */}
+      <div className="section-label">직접 입력</div>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        <input
+          type="text"
+          placeholder="예: 한강공원에서 피크닉 즐기는 여성, 강남 카페 디저트 먹방..."
+          value={customInput}
+          onChange={(e) => setCustomInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCustomSubmit()}
+          style={{ flex: 1 }}
+        />
+        <button
+          className="btn-success"
+          onClick={handleCustomSubmit}
+          disabled={!customInput.trim()}
+          style={{ flexShrink: 0, minWidth: '80px' }}
+        >
+          사용 →
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+        <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
+        <span style={{ fontSize: '0.8rem', color: 'var(--text2)', flexShrink: 0 }}>또는 AI 자동 생성</span>
+        <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
+      </div>
+
+      {/* AI 자동 생성 */}
       <div className="section-label">카테고리 선택</div>
       <div className="chip-wrap">
         {CATEGORIES.map((c) => (
@@ -45,7 +79,14 @@ export default function Step1Material({ token, onSelect }) {
         {loading ? <><span className="spinner" />생성 중...</> : '✨ 소재 자동 생성'}
       </button>
 
-      {error && <div className="error-msg">{error}</div>}
+      {error && (
+        <div className="error-msg" style={{ marginTop: '0.75rem' }}>
+          {error}
+          <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', opacity: 0.8 }}>
+            위의 직접 입력으로 원하는 소재를 바로 입력하실 수 있습니다.
+          </div>
+        </div>
+      )}
 
       {materials.length > 0 && (
         <div style={{ marginTop: '1.5rem' }}>
