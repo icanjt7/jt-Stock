@@ -403,6 +403,14 @@
   margin: 1.5rem 0;
 }
 
+.ref-section {
+  background: rgba(124,92,252,0.05);
+  border: 1px solid rgba(124,92,252,0.2);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
 .success-box {
   background: rgba(76,223,138,0.08);
   border: 1px solid rgba(76,223,138,0.25);
