@@ -1,30 +1,27 @@
-// router.huggingface.co : CORS 허용 확인됨 (Access-Control-Allow-Origin: *)
-// api-inference.huggingface.co : DNS 해결 안 됨 (일부 네트워크에서 차단)
-const HF_ROUTER = 'https://router.huggingface.co/hf-inference/models'
+// featherless-ai: CORS 허용 확인, Qwen2.5-7B-Instruct 지원 확인
+const CHAT_URL = 'https://router.huggingface.co/featherless-ai/v1/chat/completions'
+const IMAGE_URL = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell'
 
 async function callChat(messages, token) {
-  const res = await fetch(
-    `${HF_ROUTER}/Qwen/Qwen2.5-7B-Instruct/v1/chat/completions`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'Qwen/Qwen2.5-7B-Instruct',
-        messages,
-        max_tokens: 600,
-        temperature: 0.75,
-      }),
-    }
-  )
+  const res = await fetch(CHAT_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'Qwen/Qwen2.5-7B-Instruct',
+      messages,
+      max_tokens: 600,
+      temperature: 0.75,
+    }),
+  })
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     const msg = body.error?.message || body.error || `서버 오류 (${res.status})`
     if (res.status === 401) throw new Error('토큰 인증 실패 — HuggingFace 토큰을 확인해주세요')
-    if (res.status === 503) throw new Error('모델 로딩 중... 30초 후 다시 시도해주세요')
+    if (res.status === 503) throw new Error('모델 로딩 중... 잠시 후 다시 시도해주세요')
     throw new Error(msg)
   }
 
@@ -80,26 +77,23 @@ Return ONLY: {"image": "detailed English FLUX.1 prompt 50-80 words with subject/
 }
 
 export async function generateImage(imagePrompt, token) {
-  const res = await fetch(
-    `${HF_ROUTER}/black-forest-labs/FLUX.1-schnell`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: imagePrompt,
-        parameters: { num_inference_steps: 4 },
-      }),
-    }
-  )
+  const res = await fetch(IMAGE_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      inputs: imagePrompt,
+      parameters: { num_inference_steps: 4 },
+    }),
+  })
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     const msg = body.error?.message || body.error || `이미지 생성 실패 (${res.status})`
     if (res.status === 401) throw new Error('토큰 인증 실패 — HuggingFace 토큰을 확인해주세요')
-    if (res.status === 503) throw new Error('이미지 모델 로딩 중... 30초 후 다시 시도해주세요')
+    if (res.status === 503) throw new Error('이미지 모델 로딩 중... 잠시 후 다시 시도해주세요')
     throw new Error(msg)
   }
 
