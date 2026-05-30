@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { generateVideo } from '../services/hfService'
+import { generateVideoAdobe, generateVideoHF } from '../services/hfService'
 
 export default function Step4Video({ imageUrl, imageBlob, prompts, material, token, onBack, onRestart }) {
   const [videoPrompt, setVideoPrompt] = useState(prompts.video)
@@ -8,13 +8,19 @@ export default function Step4Video({ imageUrl, imageBlob, prompts, material, tok
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [engine, setEngine] = useState('adobe') // 'adobe' | 'hf'
 
   const generate = async () => {
     setLoading(true)
     setError('')
     setVideoUrl('')
     try {
-      const url = await generateVideo(imageBlob, videoPrompt, token, setProgress)
+      let url
+      if (engine === 'adobe') {
+        url = await generateVideoAdobe(imageBlob, videoPrompt, setProgress)
+      } else {
+        url = await generateVideoHF(imageBlob, videoPrompt, token, setProgress)
+      }
       setVideoUrl(url)
     } catch (e) {
       setError(e.message)
@@ -64,6 +70,26 @@ export default function Step4Video({ imageUrl, imageBlob, prompts, material, tok
         <div className="prompt-kr" style={{ marginBottom: '1rem' }}>
           <span className="prompt-kr-label">한국어 설명</span>
           {prompts.video_kr}
+        </div>
+      )}
+
+      {/* 영상 생성 엔진 선택 */}
+      <div className="chip-wrap" style={{ marginBottom: '0.75rem' }}>
+        <button className={`chip ${engine === 'adobe' ? 'selected' : ''}`} onClick={() => setEngine('adobe')}>
+          Adobe Firefly
+        </button>
+        <button className={`chip ${engine === 'hf' ? 'selected' : ''}`} onClick={() => setEngine('hf')}>
+          HF Spaces (무료)
+        </button>
+      </div>
+      {engine === 'adobe' && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--accent2)', marginBottom: '0.75rem' }}>
+          Adobe Firefly — HF Space 백엔드를 통해 고품질 영상 생성 (크레딧 소모)
+        </div>
+      )}
+      {engine === 'hf' && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '0.75rem' }}>
+          LTX-Video / Wan2.1 — 완전 무료, 대기열에 따라 시간 소요
         </div>
       )}
 

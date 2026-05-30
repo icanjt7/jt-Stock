@@ -1,5 +1,6 @@
 const CHAT_URL = 'https://router.huggingface.co/featherless-ai/v1/chat/completions'
 const IMAGE_URL = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell'
+const BACKEND_URL = 'https://icanjt7-video-studio-api.hf.space'
 
 // K-연예인 스타일을 FLUX에서 잘 인식하는 핵심 키워드
 const K_BEAUTY_BASE = 'Korean actress, K-drama lead, glass skin, luminous flawless complexion, V-line jawline, doe eyes with aegyo-sal, straight natural brows, gradient lip, small face, idol-level beauty, gorgeous Korean celebrity'
@@ -187,9 +188,50 @@ export async function generateImageWithRef(imagePrompt, referenceUrl, token, onP
   return { url: URL.createObjectURL(blob), blob }
 }
 
-export async function generateVideo(imageBlob, videoPrompt, token, onProgress) {
-  const { Client } = await import('@gradio/client')
+// Blob → base64 변환
+async function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
 
+// Adobe Firefly (HF Space 백엔드 경유)
+export async function generateVideoAdobe(imageBlob, videoPrompt, onProgress) {
+  onProgress('Adobe Firefly 백엔드 연결 중...')
+
+  const body = { prompt: videoPrompt }
+
+  if (imageBlob) {
+    onProgress('이미지 준비 중...')
+    body.image_base64 = await blobToBase64(imageBlob)
+  }
+
+  onProgress('Adobe Firefly 영상 생성 중... (1-3분 소요)')
+
+  const res = await fetch(`${BACKEND_URL}/api/generate-video`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`영상 생성 실패 (${res.status}): ${err.detail || res.statusText}`)
+  }
+
+  const data = await res.json()
+  if (!data.video_url) throw new Error(`영상 URL 없음: ${JSON.stringify(data)}`)
+
+  onProgress('완료!')
+  return data.video_url
+}
+
+// HF Spaces Gradio (폴백)
+export async function generateVideoHF(imageBlob, videoPrompt, token, onProgress) {
+  const { Client } = await import('@gradio/client')
   const SPACES = ['Lightricks/LTX-Video', 'Wan-AI/Wan2.1-T2V-14B-Gradio']
   let lastError = ''
 
@@ -197,21 +239,19 @@ export async function generateVideo(imageBlob, videoPrompt, token, onProgress) {
     try {
       onProgress(`${spaceId.split('/')[1]} 연결 중...`)
       const client = await Client.connect(spaceId, { hf_token: token })
-
-      onProgress('API 확인 중...')
       const apiInfo = await client.view_api()
       const named = apiInfo.named_endpoints || {}
       const endpointNames = Object.keys(named)
 
-      let endpoint = endpointNames.find(ep =>
+      const endpoint = endpointNames.find(ep =>
         named[ep]?.parameters?.some(p =>
           (p.label || p.parameter_name || '').toLowerCase().includes('prompt')
         )
       ) || endpointNames[0]
 
       if (!endpoint) throw new Error('엔드포인트 없음')
+      onProgress('영상 생성 중... (최대 3분)')
 
-      onProgress('영상 생성 중... (최대 2-3분 소요)')
       const params = named[endpoint]?.parameters || []
       const kwargs = {}
       for (const p of params) {
@@ -219,7 +259,7 @@ export async function generateVideo(imageBlob, videoPrompt, token, onProgress) {
         const name = p.parameter_name
         if (!name) continue
         if (label.includes('prompt') && !label.includes('negative')) kwargs[name] = videoPrompt
-        else if (label.includes('negative')) kwargs[name] = 'worst quality, blurry, jittery, distorted, watermark'
+        else if (label.includes('negative')) kwargs[name] = 'worst quality, blurry, jittery, distorted'
         else if (label.includes('seed')) kwargs[name] = Math.floor(Math.random() * 9999)
         else if ((label.includes('image') || label.includes('frame')) && imageBlob)
           kwargs[name] = new File([imageBlob], 'input.png', { type: 'image/png' })
@@ -230,12 +270,11 @@ export async function generateVideo(imageBlob, videoPrompt, token, onProgress) {
       if (out?.url) return out.url
       if (typeof out === 'string') return out
       if (out?.path) return out.path
-      throw new Error('영상 URL을 받지 못했습니다')
-
+      throw new Error('영상 URL 없음')
     } catch (e) {
       lastError = e.message
       onProgress(`${spaceId.split('/')[1]} 실패 — 다음 시도 중...`)
     }
   }
-  throw new Error(`영상 생성 실패: ${lastError}`)
+  throw new Error(`HF Spaces 영상 생성 실패: ${lastError}`)
 }
