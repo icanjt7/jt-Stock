@@ -229,52 +229,42 @@ export async function generateVideoAdobe(imageBlob, videoPrompt, onProgress) {
   return data.video_url
 }
 
-// HF Spaces Gradio (폴백)
+// HF Spaces — 백엔드 서버(Python gradio_client) 경유 (슬립/404 문제 해결)
 export async function generateVideoHF(imageBlob, videoPrompt, token, onProgress) {
-  const { Client } = await import('@gradio/client')
-  const SPACES = ['Lightricks/LTX-Video', 'Wan-AI/Wan2.1-T2V-14B-Gradio']
-  let lastError = ''
+  onProgress('백엔드 서버 연결 중...')
 
-  for (const spaceId of SPACES) {
-    try {
-      onProgress(`${spaceId.split('/')[1]} 연결 중...`)
-      const client = await Client.connect(spaceId, { hf_token: token })
-      const apiInfo = await client.view_api()
-      const named = apiInfo.named_endpoints || {}
-      const endpointNames = Object.keys(named)
-
-      const endpoint = endpointNames.find(ep =>
-        named[ep]?.parameters?.some(p =>
-          (p.label || p.parameter_name || '').toLowerCase().includes('prompt')
-        )
-      ) || endpointNames[0]
-
-      if (!endpoint) throw new Error('엔드포인트 없음')
-      onProgress('영상 생성 중... (최대 3분)')
-
-      const params = named[endpoint]?.parameters || []
-      const kwargs = {}
-      for (const p of params) {
-        const label = (p.label || p.parameter_name || '').toLowerCase()
-        const name = p.parameter_name
-        if (!name) continue
-        if (label.includes('prompt') && !label.includes('negative')) kwargs[name] = videoPrompt
-        else if (label.includes('negative')) kwargs[name] = 'worst quality, blurry, jittery, distorted'
-        else if (label.includes('seed')) kwargs[name] = Math.floor(Math.random() * 9999)
-        else if ((label.includes('image') || label.includes('frame')) && imageBlob)
-          kwargs[name] = new File([imageBlob], 'input.png', { type: 'image/png' })
-      }
-
-      const result = await client.predict(endpoint, kwargs)
-      const out = result.data?.[0]
-      if (out?.url) return out.url
-      if (typeof out === 'string') return out
-      if (out?.path) return out.path
-      throw new Error('영상 URL 없음')
-    } catch (e) {
-      lastError = e.message
-      onProgress(`${spaceId.split('/')[1]} 실패 — 다음 시도 중...`)
-    }
+  const body = { prompt: videoPrompt }
+  if (imageBlob) {
+    onProgress('이미지 변환 중...')
+    body.image_base64 = await blobToBase64(imageBlob)
   }
-  throw new Error(`HF Spaces 영상 생성 실패: ${lastError}`)
+
+  onProgress('HF Space 영상 생성 중... (Space 상태에 따라 2-5분 소요)')
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 6 * 60 * 1000) // 6분 타임아웃
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/generate-video-hf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || `HF 영상 생성 실패 (${res.status})`)
+    }
+
+    const data = await res.json()
+    if (!data.video_url) throw new Error('영상 URL을 받지 못했습니다')
+    onProgress('완료!')
+    return data.video_url
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('시간 초과 (6분) — Space 부하가 높습니다. 잠시 후 다시 시도해주세요.')
+    throw e
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
