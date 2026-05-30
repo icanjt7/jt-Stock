@@ -5,7 +5,7 @@ const STYLES = ['사실적 (Photorealistic)', '영화적 (Cinematic)', '미니�
 
 export default function Step2Prompt({ token, material, onBack, onNext }) {
   const [style, setStyle] = useState(STYLES[0])
-  const [prompts, setPrompts] = useState({ image: '', video: '' })
+  const [prompts, setPrompts] = useState({ image: '', video: '', image_kr: '', video_kr: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -14,9 +14,14 @@ export default function Step2Prompt({ token, material, onBack, onNext }) {
     setError('')
     try {
       const result = await generatePrompts(material, style, token)
-      setPrompts(result)
+      setPrompts({
+        image: result.image || '',
+        video: result.video || '',
+        image_kr: result.image_kr || '',
+        video_kr: result.video_kr || '',
+      })
     } catch (e) {
-      setError(`오류: ${e.message}`)
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -35,22 +40,13 @@ export default function Step2Prompt({ token, material, onBack, onNext }) {
       <div className="section-label">스타일 선택</div>
       <div className="chip-wrap" style={{ marginBottom: '1.25rem' }}>
         {STYLES.map((s) => (
-          <button
-            key={s}
-            className={`chip ${style === s ? 'selected' : ''}`}
-            onClick={() => setStyle(s)}
-          >
+          <button key={s} className={`chip ${style === s ? 'selected' : ''}`} onClick={() => setStyle(s)}>
             {s}
           </button>
         ))}
       </div>
 
-      <button
-        className="btn-primary"
-        onClick={generate}
-        disabled={loading}
-        style={{ minWidth: '160px' }}
-      >
+      <button className="btn-primary" onClick={generate} disabled={loading} style={{ minWidth: '160px' }}>
         {loading ? <><span className="spinner" />생성 중...</> : '✨ 프롬프트 생성'}
       </button>
 
@@ -62,20 +58,26 @@ export default function Step2Prompt({ token, material, onBack, onNext }) {
 
           <div className="prompt-box">
             <h4>이미지 프롬프트 (FLUX.1)</h4>
-            <textarea
-              rows={4}
-              value={prompts.image}
-              onChange={(e) => setPrompts({ ...prompts, image: e.target.value })}
-            />
+            <textarea rows={4} value={prompts.image}
+              onChange={(e) => setPrompts({ ...prompts, image: e.target.value })} />
+            {prompts.image_kr && (
+              <div className="prompt-kr">
+                <span className="prompt-kr-label">한국어 설명</span>
+                {prompts.image_kr}
+              </div>
+            )}
           </div>
 
           <div className="prompt-box">
             <h4>영상 프롬프트 (Video)</h4>
-            <textarea
-              rows={3}
-              value={prompts.video}
-              onChange={(e) => setPrompts({ ...prompts, video: e.target.value })}
-            />
+            <textarea rows={3} value={prompts.video}
+              onChange={(e) => setPrompts({ ...prompts, video: e.target.value })} />
+            {prompts.video_kr && (
+              <div className="prompt-kr">
+                <span className="prompt-kr-label">한국어 설명</span>
+                {prompts.video_kr}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -83,9 +85,7 @@ export default function Step2Prompt({ token, material, onBack, onNext }) {
       <div className="row-btns" style={{ marginTop: '1.5rem' }}>
         <button className="btn-secondary" onClick={onBack}>← 뒤로</button>
         {canProceed && (
-          <button className="btn-success" onClick={() => onNext(prompts)}>
-            이미지 생성하기 →
-          </button>
+          <button className="btn-success" onClick={() => onNext(prompts)}>이미지 생성하기 →</button>
         )}
       </div>
     </div>

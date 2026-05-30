@@ -285,6 +285,28 @@
   margin-bottom: 0.5rem;
 }
 
+.prompt-kr {
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  background: rgba(86,207,178,0.07);
+  border: 1px solid rgba(86,207,178,0.2);
+  border-radius: 8px;
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.prompt-kr-label {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+  margin-right: 0.5rem;
+}
+
 .selected-material {
   background: rgba(124,92,252,0.1);
   border: 1px solid rgba(124,92,252,0.3);

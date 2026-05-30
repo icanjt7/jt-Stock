@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { generateImage } from '../services/hfService'
 
 export default function Step3Image({ token, prompts, material, onBack, onNext }) {
@@ -11,17 +11,12 @@ export default function Step3Image({ token, prompts, material, onBack, onNext })
   const generate = async () => {
     setLoading(true)
     setError('')
-    // "Korean"이 없으면 앞에 자동 추가
-    const finalPrompt = imagePrompt.toLowerCase().includes('korean')
-      ? imagePrompt
-      : 'Korean aesthetic, ' + imagePrompt
     try {
-      const url = await generateImage(finalPrompt, token)
+      const { url, blob } = await generateImage(imagePrompt, token)
       setImageUrl(url)
-      const res = await fetch(url)
-      setImageBlob(await res.blob())
+      setImageBlob(blob)
     } catch (e) {
-      setError(`이미지 생성 오류: ${e.message}`)
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -40,27 +35,22 @@ export default function Step3Image({ token, prompts, material, onBack, onNext })
       <p className="step-desc">FLUX.1-schnell 모델로 고품질 이미지를 생성합니다</p>
 
       <div className="section-label">이미지 프롬프트 (편집 가능)</div>
-      <textarea
-        rows={4}
-        value={imagePrompt}
+      <textarea rows={4} value={imagePrompt}
         onChange={(e) => setImagePrompt(e.target.value)}
-        style={{ marginBottom: '1rem' }}
-      />
+        style={{ marginBottom: '0.5rem' }} />
+      {prompts.image_kr && (
+        <div className="prompt-kr" style={{ marginBottom: '1rem' }}>
+          <span className="prompt-kr-label">한국어 설명</span>
+          {prompts.image_kr}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <button className="btn-primary" onClick={generate} disabled={loading} style={{ minWidth: '140px' }}>
           {loading ? <><span className="spinner" />생성 중...</> : '🎨 이미지 생성'}
         </button>
-        {imageUrl && (
-          <button className="btn-secondary" onClick={generate} disabled={loading}>
-            🔄 다시 생성
-          </button>
-        )}
-        {imageUrl && (
-          <button className="btn-secondary" onClick={download}>
-            ⬇ 다운로드
-          </button>
-        )}
+        {imageUrl && <button className="btn-secondary" onClick={generate} disabled={loading}>🔄 다시 생성</button>}
+        {imageUrl && <button className="btn-secondary" onClick={download}>⬇ 다운로드</button>}
       </div>
 
       {error && <div className="error-msg">{error}</div>}
@@ -86,17 +76,14 @@ export default function Step3Image({ token, prompts, material, onBack, onNext })
 
       {imageUrl && !loading && (
         <div className="success-box">
-          <span>✓</span>
-          이미지 생성 완료! 마음에 드시면 영상으로 제작하세요.
+          <span>✓</span> 이미지 생성 완료! 마음에 드시면 영상으로 제작하세요.
         </div>
       )}
 
       <div className="row-btns">
         <button className="btn-secondary" onClick={onBack}>← 뒤로</button>
         {imageUrl && (
-          <button className="btn-success" onClick={() => onNext(imageUrl, imageBlob)}>
-            영상 제작하기 →
-          </button>
+          <button className="btn-success" onClick={() => onNext(imageUrl, imageBlob)}>영상 제작하기 →</button>
         )}
       </div>
     </div>
