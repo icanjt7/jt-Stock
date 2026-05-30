@@ -71,13 +71,17 @@ export async function generateMaterials(category, token) {
   const text = await callChat([
     {
       role: 'system',
-      content: 'You are a creative AI video content planner. Output ONLY a raw JSON array. No markdown, no explanation.',
+      content: 'You are a creative Korean AI video content planner. Output ONLY a raw JSON array. No markdown, no explanation.',
     },
     {
       role: 'user',
-      content: `5 unique short video ideas about "${category}" (${categoryDesc}). Visually compelling, 1-2 sentences each, great for social media.
+      content: `5 unique Korean-style short video ideas about "${category}" (${categoryDesc}).
+- Must feature Korean elements (Korean woman, Korean setting, Korean culture/aesthetics)
+- Visually compelling, 1-2 sentences each, great for Instagram/TikTok/YouTube Shorts
+- Be specific about Korean visual details
+
 Output format — exactly this, no other text:
-["idea one", "idea two", "idea three", "idea four", "idea five"]`,
+["Korean idea one", "Korean idea two", "Korean idea three", "Korean idea four", "Korean idea five"]`,
     },
   ], token, 400)
 
@@ -85,16 +89,31 @@ Output format — exactly this, no other text:
 }
 
 export async function generatePrompts(material, style, token) {
+  const styleMap = {
+    '사실적 (Photorealistic)': 'ultra-realistic photography, Canon 5D, 85mm lens, f/2.8, natural lighting, photorealistic',
+    '영화적 (Cinematic)': 'cinematic film still, anamorphic lens, dramatic lighting, movie color grading, depth of field',
+    '미니멀 (Minimal)': 'minimalist composition, clean background, soft diffused light, simple elegant aesthetic',
+    '감성적 (Aesthetic)': 'dreamy aesthetic, soft pastel tones, golden hour, emotional atmosphere, artistic',
+  }
+  const styleKeywords = styleMap[style] || 'high quality, detailed'
+
   const text = await callChat([
     {
       role: 'system',
-      content: 'You are an expert AI image prompt engineer. Output ONLY a raw JSON object. No markdown, no explanation, no newlines inside string values.',
+      content: 'You are an expert AI image prompt engineer specializing in Korean content. Output ONLY a raw JSON object. No markdown, no explanation, no newlines inside string values.',
     },
     {
       role: 'user',
       content: `Topic: "${material}", Style: ${style}
-Output format — exactly this, single-line values, no other text:
-{"image": "50-80 word English prompt for FLUX.1: subject, setting, lighting, mood, camera angle, quality", "video": "40-60 word English prompt for video AI: motion, camera movement, atmosphere"}`,
+
+Rules:
+- ALWAYS include "Korean" explicitly (Korean woman, Korean setting, Korean aesthetics)
+- Image prompt: include specific Korean visual elements (traditional/modern Korean environment, Korean face features, Korean fashion/food/culture details)
+- Style keywords to include: ${styleKeywords}
+- Both prompts must be single-line (no line breaks inside)
+
+Output format — exactly this, no other text:
+{"image": "60-80 word English FLUX.1 prompt emphasizing Korean elements: Korean subject/setting/lighting/mood/camera/${styleKeywords}", "video": "40-55 word English video prompt with Korean elements: motion/camera movement/Korean atmosphere"}`,
     },
   ], token, 600)
 

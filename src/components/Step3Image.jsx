@@ -11,8 +11,12 @@ export default function Step3Image({ token, prompts, material, onBack, onNext })
   const generate = async () => {
     setLoading(true)
     setError('')
+    // "Korean"이 없으면 앞에 자동 추가
+    const finalPrompt = imagePrompt.toLowerCase().includes('korean')
+      ? imagePrompt
+      : 'Korean aesthetic, ' + imagePrompt
     try {
-      const url = await generateImage(imagePrompt, token)
+      const url = await generateImage(finalPrompt, token)
       setImageUrl(url)
       const res = await fetch(url)
       setImageBlob(await res.blob())
